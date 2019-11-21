@@ -1,11 +1,11 @@
 rm(list=ls(all=TRUE))
 library('MCMCpack')
-set.seed(2)
+set.seed(3)
 
 #basic settings
 ntsegm.ind=20 #number of time segments per individual
 nind=40
-nbehavior=3
+nbehavior=6
 b1=6
 b2=10
 nobs.tsegm=100 #number of observations per time segment

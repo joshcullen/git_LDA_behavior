@@ -20,7 +20,7 @@ gamma1=0.1
 alpha=0.1
 
 #initial values
-nbehav=3
+nbehav=max(c(b1,b2))
 phi1=matrix(1/b1,nbehav,b1)
 phi2=matrix(1/b2,nbehav,b2)
 theta=matrix(1/nbehav,nobs,nbehav)
