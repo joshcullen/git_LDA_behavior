@@ -1,22 +1,25 @@
+plot(res$loglikel[100:ngibbs],type='l')
+
 compare=function(true1,estim1){
   rango=range(c(true1,estim1))
   plot(true1,estim1,ylim=rango,xlim=rango)
   lines(rango,rango,col='red')
 }
 
-boxplot(theta)
+theta.estim=matrix(res$theta[ngibbs,],nrow(dat),nmaxclust)
+boxplot(theta.estim)
 
-z1.tmp=apply(z1.agg,c(1,3),sum)[,1:4] 
-z2.tmp=apply(z2.agg,c(1,3),sum)[,1:4]
+z1.tmp=apply(res$z1.agg,c(1,3),sum)[,1:7] 
+z2.tmp=apply(res$z2.agg,c(1,3),sum)[,1:7]
 
 #find best order
 ordem=numeric()
 for (i in 1:ncol(z1.true)){
-  res=rep(NA,ncol(z1.true))
+  tmp=rep(NA,ncol(z1.true))
   for (j in 1:ncol(z1.tmp)){
-    res[j]=cor(cbind(z1.tmp[,j],z1.true[,i]))[1,2]
+    tmp[j]=cor(cbind(z1.tmp[,j],z1.true[,i]))[1,2]
   }
-  ind=which(res==max(res))
+  ind=which(tmp==max(tmp))
   ordem=c(ordem,ind)
 }
 
@@ -26,7 +29,12 @@ for (i in 1:ncol(z1.true)){
 compare(z1.true,z1.tmp[,ordem])
 compare(z2.true,z2.tmp[,ordem])
 
-compare(theta.true,theta[,ordem])
+compare(theta.true,theta.estim[,ordem])
 
-compare(phi1.true,phi1[ordem,])
-compare(phi2.true,phi2[ordem,])
+ind1=grep('y1',colnames(dat))
+phi1.estim=matrix(res$phi1[ngibbs,],nmaxclust,length(ind1))
+compare(phi1.true,phi1.estim[ordem,])
+
+ind2=grep('y2',colnames(dat))
+phi2.estim=matrix(res$phi2[ngibbs,],nmaxclust,length(ind2))
+compare(phi2.true,phi2.estim[ordem,])

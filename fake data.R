@@ -1,11 +1,11 @@
 rm(list=ls(all=TRUE))
 library('MCMCpack')
-set.seed(3)
+set.seed(101)
 
 #basic settings
 ntsegm.ind=20 #number of time segments per individual
 nind=40
-nbehavior=6
+nbehavior=7
 b1=6
 b2=10
 nobs.tsegm=100 #number of observations per time segment
@@ -15,8 +15,25 @@ phi1.true=phi1=rdirichlet(nbehavior,alpha=rep(0.1,b1))
 phi2.true=phi2=rdirichlet(nbehavior,alpha=rep(0.1,b2))
 theta.true=theta=rdirichlet(ntsegm.ind*nind,alpha=rep(0.1,nbehavior))
 
+#make sure that behaviors are not too similar
+for (i in 1:(nbehavior-1)){
+  for (j in (i+1):nbehavior){
+    #phi1
+    tmp=phi1.true[c(i,j),]
+    tmp1=cor(t(tmp))[1,2]
+    if (tmp1>0.9) phi1.true[j,]=rdirichlet(1,alpha=rep(0.5,b1))
+    
+    #phi2
+    tmp=phi2.true[c(i,j),]
+    tmp1=cor(t(tmp))[1,2]
+    if (tmp1>0.9) phi2.true[j,]=rdirichlet(1,alpha=rep(0.5,b2))
+  }
+}
+
 #look at these parameters
+par(mfrow=c(ceiling(nbehavior/2),2),mar=rep(1,4))
 for (i in 1:nbehavior) plot(phi1.true[i,],type='h',main=i)
+par(mfrow=c(ceiling(nbehavior/2),2),mar=rep(1,4))
 for (i in 1:nbehavior) plot(phi2.true[i,],type='h',main=i)
 boxplot(theta)
 apply(theta>0.95,2,mean)
