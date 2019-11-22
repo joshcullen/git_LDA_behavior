@@ -29,6 +29,8 @@ LDA_behavior_gibbs=function(dat,gamma1,alpha,ngibbs,nmaxclust,nburn){
   store.phi2=matrix(NA,ngibbs,nmaxclust*b2)
   store.theta=matrix(NA,ngibbs,nobs*nmaxclust)
   store.loglikel=rep(NA,1)
+  zeroes1=array(0,c(nobs,b1,nmaxclust))
+  zeroes2=array(0,c(nobs,b2,nmaxclust))
   for (i in 1:ngibbs){
     print(i)
     
@@ -44,10 +46,17 @@ LDA_behavior_gibbs=function(dat,gamma1,alpha,ngibbs,nmaxclust,nburn){
     }
     
     #sample from FCD's
-    z1.agg=sample.z1.agg(lphi1=log(phi1),ltheta=log(theta),y1=y1,
-                         nobs=nobs,b1=b1,nbehav=nmaxclust)
-    z2.agg=sample.z2.agg(lphi2=log(phi2),ltheta=log(theta),y2=y2,
-                         nobs=nobs,b2=b2,nbehav=nmaxclust)
+    tmp=SampleZ1Agg(nobs=nobs,b1=b1,y1=y1, nmaxclust=nmaxclust,
+                    lphi1=log(phi1),ltheta=log(theta),zeroes=zeroes1)
+    z1.agg=tmp$Z1Agg
+    # z1.agg=sample.z1.agg(lphi1=log(phi1),ltheta=log(theta),y1=y1,
+    #                      nobs=nobs,b1=b1,nbehav=nmaxclust)
+    
+    tmp=SampleZ2Agg(nobs=nobs,b2=b2,y2=y2, nmaxclust=nmaxclust,
+                    lphi2=log(phi2),ltheta=log(theta),zeroes=zeroes2)
+    z2.agg=tmp$Z2Agg
+    # z2.agg=sample.z2.agg(lphi2=log(phi2),ltheta=log(theta),y2=y2,
+    #                      nobs=nobs,b2=b2,nbehav=nmaxclust)
     # z1.agg=z1.agg.true
     # z2.agg=z2.agg.true
     

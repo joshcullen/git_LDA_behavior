@@ -9,8 +9,8 @@ compare=function(true1,estim1){
 theta.estim=matrix(res$theta[ngibbs,],nrow(dat),nmaxclust)
 boxplot(theta.estim)
 
-z1.tmp=apply(res$z1.agg,c(1,3),sum)[,1:7] 
-z2.tmp=apply(res$z2.agg,c(1,3),sum)[,1:7]
+z1.tmp=apply(res$z1.agg,c(1,3),sum)[,1:4] 
+z2.tmp=apply(res$z2.agg,c(1,3),sum)[,1:4]
 
 #find best order
 ordem=numeric()
@@ -23,7 +23,8 @@ for (i in 1:ncol(z1.true)){
   ordem=c(ordem,ind)
 }
 
-# head(cbind(z1.tmp[,ordem],z1.true))
+# head(z1.tmp[,ordem])
+# head(z1.true)
 # head(cbind(z2.tmp[,ordem],z2.true))
 
 compare(z1.true,z1.tmp[,ordem])
@@ -38,3 +39,17 @@ compare(phi1.true,phi1.estim[ordem,])
 ind2=grep('y2',colnames(dat))
 phi2.estim=matrix(res$phi2[ngibbs,],nmaxclust,length(ind2))
 compare(phi2.true,phi2.estim[ordem,])
+
+# par(mfrow=c(2,1))
+# phi1.estim1=phi1.estim[ordem,]
+# for (i in 1:5){
+#   barplot(phi1.true[i,])
+#   barplot(phi1.estim1[i,])
+# }
+# 
+# par(mfrow=c(2,1))
+# phi2.estim1=phi2.estim[ordem,]
+# for (i in 1:5){
+#   barplot(phi2.true[i,])
+#   barplot(phi2.estim1[i,])
+# }

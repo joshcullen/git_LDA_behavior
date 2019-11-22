@@ -7,7 +7,7 @@ sample.z1.agg=function(lphi1,ltheta,y1,nobs,b1,nbehav){
         lprob=lprob-max(lprob)
         prob=exp(lprob)
         prob=prob/sum(prob)
-        z1.agg[i,j,]=rmultinom(1,size=y1[i,j],prob=prob)
+        z1.agg[i,j,]=rmultinom2(prob,y1[i,j],runif(y1[i,j]),nmaxclust)#rmultinom(1,size=y1[i,j],prob=prob)
       }
     }
   }
@@ -23,7 +23,7 @@ sample.z2.agg=function(lphi2,ltheta,y2,nobs,b2,nbehav){
         lprob=lprob-max(lprob)
         prob=exp(lprob)
         prob=prob/sum(prob)
-        z2.agg[i,j,]=rmultinom(1,size=y2[i,j],prob=prob)
+        z2.agg[i,j,]=rmultinom2(prob,y2[i,j],runif(y2[i,j]),nmaxclust)#rmultinom(1,size=y2[i,j],prob=prob)
       }
     }
   }

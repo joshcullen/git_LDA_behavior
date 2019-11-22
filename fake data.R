@@ -1,34 +1,36 @@
 rm(list=ls(all=TRUE))
 library('MCMCpack')
-set.seed(101)
+set.seed(51)
 
 #basic settings
 ntsegm.ind=20 #number of time segments per individual
 nind=40
-nbehavior=7
+nbehavior=4
 b1=6
 b2=10
 nobs.tsegm=100 #number of observations per time segment
 
 #get parameters
-phi1.true=phi1=rdirichlet(nbehavior,alpha=rep(0.1,b1))
-phi2.true=phi2=rdirichlet(nbehavior,alpha=rep(0.1,b2))
+phi1=rdirichlet(nbehavior,alpha=rep(0.1,b1))
+phi2=rdirichlet(nbehavior,alpha=rep(0.1,b2))
 theta.true=theta=rdirichlet(ntsegm.ind*nind,alpha=rep(0.1,nbehavior))
 
 #make sure that behaviors are not too similar
-for (i in 1:(nbehavior-1)){
-  for (j in (i+1):nbehavior){
-    #phi1
-    tmp=phi1.true[c(i,j),]
-    tmp1=cor(t(tmp))[1,2]
-    if (tmp1>0.9) phi1.true[j,]=rdirichlet(1,alpha=rep(0.5,b1))
-    
-    #phi2
-    tmp=phi2.true[c(i,j),]
-    tmp1=cor(t(tmp))[1,2]
-    if (tmp1>0.9) phi2.true[j,]=rdirichlet(1,alpha=rep(0.5,b2))
-  }
-}
+# for (i in 1:(nbehavior-1)){
+#   for (j in (i+1):nbehavior){
+#     #phi1
+#     tmp=phi1[c(i,j),]
+#     tmp1=cor(t(tmp))[1,2]
+#     if (tmp1>0.9) phi1[j,]=rdirichlet(1,alpha=rep(0.5,b1))
+#     
+#     #phi2
+#     tmp=phi2[c(i,j),]
+#     tmp1=cor(t(tmp))[1,2]
+#     if (tmp1>0.9) phi2[j,]=rdirichlet(1,alpha=rep(0.5,b2))
+#   }
+# }
+phi1.true=phi1
+phi2.true=phi2
 
 #look at these parameters
 par(mfrow=c(ceiling(nbehavior/2),2),mar=rep(1,4))
