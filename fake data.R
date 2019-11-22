@@ -1,11 +1,14 @@
 rm(list=ls(all=TRUE))
 library('MCMCpack')
-set.seed(51)
+set.seed(49)
 
 #basic settings
 ntsegm.ind=20 #number of time segments per individual
 nind=40
-nbehavior=4
+#be careful with large nbehavior because it is easy to:
+#- generate phi1 and phi2 in such a way that things are not clearly separable
+#- generate theta in such a way that we don't have approx. pure time segments
+nbehavior=6
 b1=6
 b2=10
 nobs.tsegm=100 #number of observations per time segment

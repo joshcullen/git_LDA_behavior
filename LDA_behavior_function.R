@@ -35,11 +35,13 @@ sample.v=function(z1.agg,z2.agg,gamma1,nobs,nbehav){
   soma2=apply(z2.agg,c(1,3),sum)
   soma.fim=soma1+soma2
   
-  cumsum1=t(apply(soma1[,nbehav:1],1,cumsum))
-  cumsum1=cumsum1[,nbehav:1]
+  # cumsum1=t(apply(soma1[,nbehav:1],1,cumsum))
+  # cumsum1=cumsum1[,nbehav:1]
+  cumsum1=CumSumInv(nobs=nobs,nmaxclust=nmaxclust,z=soma1)
   cumsum1=cumsum1[,-1]
-  cumsum2=t(apply(soma2[,nbehav:1],1,cumsum))
-  cumsum2=cumsum2[,nbehav:1]
+  # cumsum2=t(apply(soma2[,nbehav:1],1,cumsum))
+  # cumsum2=cumsum2[,nbehav:1]
+  cumsum2=CumSumInv(nobs=nobs,nmaxclust=nmaxclust,z=soma2)
   cumsum2=cumsum2[,-1]
   cumsum.fim=cumsum1+cumsum2
   

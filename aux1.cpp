@@ -119,3 +119,21 @@ List SampleZ2Agg(int nobs,int b2,IntegerMatrix y2, int nmaxclust,
   
   return(L);
 }
+
+//' This function calculates the inverted cumsum
+// [[Rcpp::export]]
+IntegerMatrix CumSumInv(int nobs, int nmaxclust, IntegerMatrix z){
+  IntegerMatrix res(nobs,z.ncol());
+  IntegerVector soma(nobs);
+  
+  for (int j=z.ncol()-1; j> -1; j--){
+    if (j==z.ncol()-1){
+      soma=z(_,j);
+    }            
+    if (j!=z.ncol()-1){
+      soma=soma+z(_,j);
+    }
+    res(_,j)=soma;
+  }
+  return(res);
+}

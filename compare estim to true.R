@@ -9,8 +9,8 @@ compare=function(true1,estim1){
 theta.estim=matrix(res$theta[ngibbs,],nrow(dat),nmaxclust)
 boxplot(theta.estim)
 
-z1.tmp=apply(res$z1.agg,c(1,3),sum)[,1:4] 
-z2.tmp=apply(res$z2.agg,c(1,3),sum)[,1:4]
+z1.tmp=apply(res$z1.agg,c(1,3),sum)[,1:6] 
+z2.tmp=apply(res$z2.agg,c(1,3),sum)[,1:6]
 
 #find best order
 ordem=numeric()
