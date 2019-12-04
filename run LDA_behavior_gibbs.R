@@ -3,7 +3,6 @@ library('MCMCpack')
 library('Rcpp')
 set.seed(2)
 
-setwd('U:\\GIT_models\\git_LDA_behavior')
 source('LDA_behavior_function.R')
 source('LDA_behavior_gibbs.R')
 sourceCpp('aux1.cpp')
