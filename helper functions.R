@@ -53,7 +53,7 @@ get.summary.stats_behav=function(dat){  #dat must have time.seg assigned; for al
   obs
 }
 #------------------------------------------------
-get_behav_hist=function(res) {
+get_behav_hist=function(res) {  #generate DF of bin counts for histogram per behavior
   
   #summarize TA results by frequency and proportion
   behav.res.TA<- matrix(0, dim(res$z1.agg)[2]*dim(res$z1.agg)[3], 4)
@@ -90,4 +90,59 @@ get_behav_hist=function(res) {
   behav.res<- rbind(behav.res.TA, behav.res.SL)
   
   behav.res
+}
+#------------------------------------------------
+obs.per.tseg=function(dat.list) {  #count the number of observations w/in time segments
+  tmp<- dat.list %>% group_by(behav.seg) %>% tally()
+  tmp$id<- unique(dat.list$id)
+  
+  tmp
+}
+#------------------------------------------------
+aug_behav_df=function(dat, theta.estim, nobs) {  #augment from time segments to observations
+  
+  for (i in 1:nrow(theta.estim)) {
+    ind<- which(dat$id == theta.estim$id[i] & dat$behav.seg == theta.estim$tseg[i])
+    
+    if (i == 1) {
+      theta.estim2<- rep(theta.estim[i,], nobs$n[i]) %>%
+        unlist() %>%
+        matrix(nrow = nobs$n[i], ncol = ncol(theta.estim), byrow = TRUE)
+    } else {
+      tmp<- rep(theta.estim[i,], nobs$n[i]) %>%
+        unlist() %>%
+        matrix(nrow = nobs$n[i], ncol = ncol(theta.estim), byrow = TRUE)
+      
+      theta.estim2<- rbind(theta.estim2, tmp)
+    }
+  }
+  
+  colnames(theta.estim2)<- names(theta.estim)
+  theta.estim2<- data.frame(theta.estim2, time1 = dat$time1, ESTtime = dat$ESTtime)
+  
+  theta.estim2
+}
+#------------------------------------------------
+assign_behav=function(dat.list, theta.estim2) {  #assign dominant behavior to observations
+  
+  for (i in 1:length(dat.list)) {
+    tmp<- matrix(0, nrow(dat.list[[i]]), 2)
+    sub<- theta.estim2[theta.estim2$id == unique(dat.list[[i]]$id),]
+    
+    for (j in 1:nrow(sub)) {
+      ind<- which.max(sub[j,3:9])
+      tmp[j,1]<- names(ind) %>% as.character()
+      tmp[j,2]<- round(sub[j,(2+ind)], 3) %>% as.numeric()
+    }
+    colnames(tmp)<- c("behav","prop")
+    dat.list[[i]]<- cbind(dat.list[[i]], tmp)
+    dat.list[[i]]$behav<- dat.list[[i]]$behav %>% as.character()
+    dat.list[[i]]$prop<- dat.list[[i]]$prop %>% as.character()
+  }
+  
+  #Convert to DF
+  dat2<- map_dfr(dat.list, `[`)
+  dat2$prop<- dat2$prop %>% as.numeric() 
+  
+  dat2
 }
