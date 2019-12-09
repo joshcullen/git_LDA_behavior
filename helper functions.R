@@ -19,17 +19,17 @@ get.summary.stats_behav=function(dat){  #dat must have time.seg assigned; for al
   obs.list<- vector("list", n)
   names(obs.list)<- id
   
-  #calculate # of obs in each bin (per move param) by behav.seg
+  #calculate # of obs in each bin (per move param) by tseg
   for (i in 1:length(dat.list)) {
     dat.ind=dat.list[[i]]
-    ntseg=max(dat.ind$behav.seg)
+    ntseg=max(dat.ind$tseg)
     
     
     #TA
     TA<- matrix(0, ntseg, max(dat.list[[i]]$TA, na.rm = T))
     colnames(TA)<- paste0("y1.",1:max(dat.list[[i]]$TA, na.rm = T))
     for (j in 1:ntseg){
-      tmp<- dat.list[[i]] %>% filter(behav.seg == j) %>% dplyr::select(TA) %>% table()
+      tmp<- dat.list[[i]] %>% filter(tseg == j) %>% dplyr::select(TA) %>% table()
       TA[j,as.numeric(names(tmp))]<- tmp
     }
     
@@ -38,7 +38,7 @@ get.summary.stats_behav=function(dat){  #dat must have time.seg assigned; for al
     SL<- matrix(0, ntseg, max(dat.ind$SL, na.rm = T))
     colnames(SL)<- paste0("y2.",1:max(dat.ind$SL, na.rm = T))
     for (j in 1:ntseg){
-      tmp<- dat.ind %>% filter(behav.seg == j) %>% dplyr::select(SL) %>% table()
+      tmp<- dat.ind %>% filter(tseg == j) %>% dplyr::select(SL) %>% table()
       SL[j,as.numeric(names(tmp))]<- tmp
     }
     
@@ -93,7 +93,7 @@ get_behav_hist=function(res) {  #generate DF of bin counts for histogram per beh
 }
 #------------------------------------------------
 obs.per.tseg=function(dat.list) {  #count the number of observations w/in time segments
-  tmp<- dat.list %>% group_by(behav.seg) %>% tally()
+  tmp<- dat.list %>% group_by(tseg) %>% tally()
   tmp$id<- unique(dat.list$id)
   
   tmp
@@ -102,7 +102,7 @@ obs.per.tseg=function(dat.list) {  #count the number of observations w/in time s
 aug_behav_df=function(dat, theta.estim, nobs) {  #augment from time segments to observations
   
   for (i in 1:nrow(theta.estim)) {
-    ind<- which(dat$id == theta.estim$id[i] & dat$behav.seg == theta.estim$tseg[i])
+    ind<- which(dat$id == theta.estim$id[i] & dat$tseg == theta.estim$tseg[i])
     
     if (i == 1) {
       theta.estim2<- rep(theta.estim[i,], nobs$n[i]) %>%
@@ -118,7 +118,7 @@ aug_behav_df=function(dat, theta.estim, nobs) {  #augment from time segments to 
   }
   
   colnames(theta.estim2)<- names(theta.estim)
-  theta.estim2<- data.frame(theta.estim2, time1 = dat$time1, ESTtime = dat$ESTtime)
+  theta.estim2<- data.frame(theta.estim2, time1 = dat$time1, date = dat$date)
   
   theta.estim2
 }
@@ -130,6 +130,7 @@ assign_behav=function(dat.list, theta.estim2) {  #assign dominant behavior to ob
     sub<- theta.estim2[theta.estim2$id == unique(dat.list[[i]]$id),]
     
     for (j in 1:nrow(sub)) {
+      # print(j)
       ind<- which.max(sub[j,3:9])
       tmp[j,1]<- names(ind) %>% as.character()
       tmp[j,2]<- round(sub[j,(2+ind)], 3) %>% as.numeric()

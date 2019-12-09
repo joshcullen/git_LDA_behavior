@@ -23,8 +23,8 @@ sourceCpp('aux1.cpp')
 ############################
 
 #get data
-dat<- read.csv('Snail Kite Gridded Data_behav.csv', header = T, sep = ',')
-dat$ESTtime<- dat$ESTtime %>% as_datetime()
+dat<- read.csv('Snail Kite Gridded Data_larger_behav.csv', header = T, sep = ',')
+dat$date<- dat$date %>% as_datetime()
 dat.list<- df.to.list(dat)
 obs<- get.summary.stats_behav(dat)
 
@@ -49,8 +49,8 @@ res=LDA_behavior_gibbs(dat=obs,gamma1=gamma1,alpha=alpha,
 plot(res$loglikel,type='l')
 
 #Extract and plots proportions of behaviors per time segment
-theta.post<- res$theta[(nburn+1):ngibbs,] %>% apply(2, mean)  #calc mean of posterior
-theta.estim=matrix(theta.post, nrow(obs), nmaxclust)
+theta.post<- res$theta[(nburn+1):ngibbs,]  
+theta.estim<- theta.post %>% apply(2, mean) %>% matrix(nrow(obs), nmaxclust) #calc mean of posterior
 boxplot(theta.estim)
 
 
@@ -99,14 +99,14 @@ ggplot(behav.res, aes(x = bin, y = prop, fill = behav)) +
 #Assign behaviors (via theta) to each time segment
 theta.estim<- data.frame(id = obs$id, tseg = obs$tseg, theta.estim)
 names(theta.estim)<- c("id", "tseg", 1:nmaxclust)  #define behaviors
-nobs<- purrr::map_dfr(dat.list, obs.per.tseg)  #calc obs per tseg
+nobs<- data.frame(id = obs$id, tseg = obs$tseg, n = apply(obs[,11:16], 1, sum)) #calc obs per tseg
 
 #Create augmented matrix by replicating rows (tsegs) according to obs per tseg
 theta.estim2<- aug_behav_df(dat = dat, theta.estim = theta.estim, nobs = nobs)
 
 #Change into long format
-theta.estim.long<- theta.estim2 %>% gather(key, value, -id, -tseg, -time1, -ESTtime)
-theta.estim.long$ESTtime<- theta.estim.long$ESTtime %>% as_datetime()
+theta.estim.long<- theta.estim2 %>% gather(key, value, -id, -tseg, -time1, -date)
+theta.estim.long$date<- theta.estim.long$date %>% as_datetime()
 names(theta.estim.long)[5:6]<- c("behavior","prop")
 
 
@@ -154,7 +154,7 @@ breed<- data.frame(xmin = as_datetime(c("2016-03-01 00:00:00","2017-03-01 00:00:
 ggplot() +
   geom_rect(data = breed, aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
             fill = "grey", alpha = 0.5) +
-  geom_path(data = theta.estim.long, aes(x=ESTtime, y=prop, color = behavior)) +
+  geom_path(data = theta.estim.long, aes(x=date, y=prop, color = behavior)) +
   labs(x = "\nTime", y = "State Probability\n") +
   scale_color_viridis_d("Behavior", direction = -1) +
   theme_bw() +
@@ -166,7 +166,7 @@ ggplot() +
 
 #stacked area
 ggplot(theta.estim.long) +
-  geom_area(aes(x=ESTtime, y=prop, fill = behavior), color = "black", size = 0.25,
+  geom_area(aes(x=date, y=prop, fill = behavior), color = "black", size = 0.25,
             position = "fill") +
   geom_rect(data = breed, aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
             fill = "grey", alpha = 0.25) +
@@ -200,10 +200,10 @@ fl<- st_transform(fl, crs = "+init=epsg:32617") #change projection to UTM 17N
 # Facet plot of maps
 ggplot() +
   geom_sf(data = fl) +
-  coord_sf(xlim = c(min(dat$utmlong-120000), max(dat$utmlong+40000)),
-           ylim = c(min(dat$utmlat-20000), max(dat$utmlat+20000)), expand = FALSE) +
-  geom_path(data = dat2, aes(x=utmlong, y=utmlat), color="gray60", size=0.25) +
-  geom_point(data = dat2, aes(utmlong, utmlat, fill=behav), size=2.5, pch=21, alpha=dat2$prop) +
+  coord_sf(xlim = c(min(dat$x-120000), max(dat$x+40000)),
+           ylim = c(min(dat$y-20000), max(dat$y+20000)), expand = FALSE) +
+  geom_path(data = dat2, aes(x=x, y=y), color="gray60", size=0.25) +
+  geom_point(data = dat2, aes(x, y, fill=behav), size=2.5, pch=21, alpha=dat2$prop) +
   scale_fill_viridis_d("Behavior", direction = -1) +
   labs(x = "Longitude", y = "Latitude") +
   theme_bw() +
