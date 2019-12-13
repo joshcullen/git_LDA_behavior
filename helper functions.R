@@ -130,8 +130,8 @@ assign_behav=function(dat.list, theta.estim2) {  #assign dominant behavior to ob
     sub<- theta.estim2[theta.estim2$id == unique(dat.list[[i]]$id),]
     
     for (j in 1:nrow(sub)) {
-      # print(j)
-      ind<- which.max(sub[j,3:9])
+      k<- ncol(theta.estim2)-4  # number of behaviors
+      ind<- which.max(sub[j,3:(3+k-1)])
       tmp[j,1]<- names(ind) %>% as.character()
       tmp[j,2]<- round(sub[j,(2+ind)], 3) %>% as.numeric()
     }

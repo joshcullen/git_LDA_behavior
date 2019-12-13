@@ -24,6 +24,7 @@ sourceCpp('aux1.cpp')
 
 #get data
 dat<- read.csv('Snail Kite Gridded Data_larger_behav.csv', header = T, sep = ',')
+dat<- dat %>% filter(id != 9 & id != 10.2 & id != 13  & id != 17)
 dat$date<- dat$date %>% as_datetime()
 dat.list<- df.to.list(dat)
 obs<- get.summary.stats_behav(dat)
@@ -51,7 +52,9 @@ plot(res$loglikel,type='l')
 #Extract and plots proportions of behaviors per time segment
 theta.post<- res$theta[(nburn+1):ngibbs,]  
 theta.estim<- theta.post %>% apply(2, mean) %>% matrix(nrow(obs), nmaxclust) #calc mean of posterior
-boxplot(theta.estim)
+# png("Boxplot of behavior probs.png", width = 7, height = 5, units = "in", res = 300)
+boxplot(theta.estim, xlab="Behavior", ylab="Probability of Behavior Occurrence")
+# dev.off()
 
 
 #Determine proportion of behaviors (across all time segments)
@@ -65,29 +68,30 @@ round(apply(theta.estim, 2, sum)/nrow(theta.estim), digits = 3)
 #################################################################
 
 behav.res<- get_behav_hist(res)
+behav.res<- behav.res[behav.res$behav <=3,]  #only select the top 3 behaviors
 
-#Plot histograms of frequency data
+#Plot histograms of frequency data; order color scale from slow to fast
 ggplot(behav.res, aes(x = bin, y = count, fill = behav)) +
   geom_bar(stat = 'identity') +
-  scale_fill_viridis_c(guide = F, direction = -1) +
   labs(x = "\nBin", y = "Frequency\n") +
   theme_bw() +
   theme(axis.title = element_text(size = 16), axis.text.y = element_text(size = 14),
         axis.text.x.bottom = element_text(size = 12),
         strip.text = element_text(size = 14), strip.text.x = element_text(face = "bold")) +
+  scale_fill_manual(values = viridis(n=3)[c(2,1,3)], guide = F) +
   facet_grid(param ~ behav, scales = "free_y")
 
 
 
-#Plot histograms of proportion data
-ggplot(behav.res, aes(x = bin, y = prop, fill = behav)) +
+#Plot histograms of proportion data; order color scale from slow to fast
+ggplot(behav.res, aes(x = bin, y = prop, fill = as.factor(behav))) +
   geom_bar(stat = 'identity') +
-  scale_fill_viridis_c(guide = F, direction = -1) +
   labs(x = "\nBin", y = "Proportion\n") +
   theme_bw() +
   theme(axis.title = element_text(size = 16), axis.text.y = element_text(size = 14),
         axis.text.x.bottom = element_text(size = 12),
         strip.text = element_text(size = 14), strip.text.x = element_text(face = "bold")) +
+  scale_fill_manual(values = viridis(n=3)[c(2,1,3)], guide = F) +
   facet_grid(param ~ behav, scales = "fixed")
 
 
@@ -97,9 +101,11 @@ ggplot(behav.res, aes(x = bin, y = prop, fill = behav)) +
 ################################################
 
 #Assign behaviors (via theta) to each time segment
+theta.estim<- apply(theta.estim[,1:3], 1, function(x) x/sum(x)) %>% t()  #normalize probs for only first 3 behaviors being used
+
 theta.estim<- data.frame(id = obs$id, tseg = obs$tseg, theta.estim)
-names(theta.estim)<- c("id", "tseg", 1:nmaxclust)  #define behaviors
-nobs<- data.frame(id = obs$id, tseg = obs$tseg, n = apply(obs[,11:16], 1, sum)) #calc obs per tseg
+names(theta.estim)<- c("id", "tseg", "ARS","Transit","Resting")  #define behaviors
+nobs<- data.frame(id = obs$id, tseg = obs$tseg, n = apply(obs[,11:16], 1, sum)) #calc obs per tseg using SL bins (more reliable than TA)
 
 #Create augmented matrix by replicating rows (tsegs) according to obs per tseg
 theta.estim2<- aug_behav_df(dat = dat, theta.estim = theta.estim, nobs = nobs)
@@ -108,23 +114,11 @@ theta.estim2<- aug_behav_df(dat = dat, theta.estim = theta.estim, nobs = nobs)
 theta.estim.long<- theta.estim2 %>% gather(key, value, -id, -tseg, -time1, -date)
 theta.estim.long$date<- theta.estim.long$date %>% as_datetime()
 names(theta.estim.long)[5:6]<- c("behavior","prop")
-
+theta.estim.long$behavior<- factor(theta.estim.long$behavior, levels = c("Resting","ARS","Transit"))
 
 
 
 ### Aligned by first observation
-
-#lines
-ggplot(theta.estim.long) +
-  geom_path(aes(x=time1, y=prop, color = behavior)) +
-  labs(x = "\nObservation", y = "State Probability\n") +
-  scale_color_viridis_d("Behavior", direction = -1) +
-  theme_bw() +
-  theme(axis.title = element_text(size = 16), axis.text.y = element_text(size = 14),
-        axis.text.x.bottom = element_text(size = 12),
-        strip.text = element_text(size = 14, face = "bold"),
-        panel.grid = element_blank()) +
-  facet_wrap(~id, scales = "free_x")
 
 #stacked area
 ggplot(theta.estim.long) +
@@ -150,19 +144,6 @@ breed<- data.frame(xmin = as_datetime(c("2016-03-01 00:00:00","2017-03-01 00:00:
                    ymin = -Inf, ymax = Inf)
 
 
-#lines
-ggplot() +
-  geom_rect(data = breed, aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
-            fill = "grey", alpha = 0.5) +
-  geom_path(data = theta.estim.long, aes(x=date, y=prop, color = behavior)) +
-  labs(x = "\nTime", y = "State Probability\n") +
-  scale_color_viridis_d("Behavior", direction = -1) +
-  theme_bw() +
-  theme(axis.title = element_text(size = 16), axis.text.y = element_text(size = 14),
-        axis.text.x.bottom = element_text(size = 12),
-        strip.text = element_text(size = 14, face = "bold"),
-        panel.grid = element_blank()) +
-  facet_wrap(~id)
 
 #stacked area
 ggplot(theta.estim.long) +
@@ -189,6 +170,7 @@ ggplot(theta.estim.long) +
 
 #Add cluster assignments to original data; one column for dominant behavior and another for prop/prob to use for alpha of points
 dat2<- assign_behav(dat.list = dat.list, theta.estim2 = theta.estim2)
+dat2$behav<- factor(dat2$behav, levels = c("Resting","ARS","Transit"))
 
 
 #load map data
