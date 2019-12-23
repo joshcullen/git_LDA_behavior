@@ -8,6 +8,7 @@ library(lubridate)
 library(rnaturalearth)
 library(rnaturalearthdata)
 library(sf)
+library(viridis)
 
 
 source('LDA_behavior_function.R')
@@ -71,7 +72,7 @@ behav.res<- get_behav_hist(res)
 behav.res<- behav.res[behav.res$behav <=3,]  #only select the top 3 behaviors
 
 #Plot histograms of frequency data; order color scale from slow to fast
-ggplot(behav.res, aes(x = bin, y = count, fill = behav)) +
+ggplot(behav.res, aes(x = bin, y = count, fill = as.factor(behav))) +
   geom_bar(stat = 'identity') +
   labs(x = "\nBin", y = "Frequency\n") +
   theme_bw() +
@@ -124,7 +125,7 @@ theta.estim.long$behavior<- factor(theta.estim.long$behavior, levels = c("Restin
 ggplot(theta.estim.long) +
   geom_area(aes(x=time1, y=prop, fill = behavior), color = "black", size = 0.25,
             position = "fill") +
-  labs(x = "\nObservation", y = "State Probability\n") +
+  labs(x = "\nObservation", y = "Proportion of Behavior\n") +
   scale_fill_viridis_d("Behavior", direction = -1) +
   theme_bw() +
   theme(axis.title = element_text(size = 16), axis.text.y = element_text(size = 14),
@@ -151,7 +152,7 @@ ggplot(theta.estim.long) +
             position = "fill") +
   geom_rect(data = breed, aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
             fill = "grey", alpha = 0.25) +
-  labs(x = "\nTime", y = "State Probability\n") +
+  labs(x = "\nTime", y = "Proportion of Behavior\n") +
   scale_fill_viridis_d("Behavior", direction = -1) +
   theme_bw() +
   theme(axis.title = element_text(size = 16), axis.text.y = element_text(size = 14),
