@@ -25,7 +25,6 @@ sourceCpp('aux1.cpp')
 
 #get data
 dat<- read.csv('Snail Kite Gridded Data_larger_behav.csv', header = T, sep = ',')
-dat<- dat %>% filter(id != 9 & id != 10.2 & id != 13  & id != 17)
 dat$date<- dat$date %>% as_datetime()
 dat.list<- df.to.list(dat)
 obs<- get.summary.stats_behav(dat)

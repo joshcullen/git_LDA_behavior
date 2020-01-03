@@ -50,6 +50,7 @@ get.summary.stats_behav=function(dat){  #dat must have time.seg assigned; for al
   }
   #obs<- do.call(rbind.data.frame, obs.list)
   obs<- map_dfr(obs.list, `[`)
+  obs[is.na(obs)]<- 0  #replace NAs w/ zero
   obs
 }
 #------------------------------------------------
