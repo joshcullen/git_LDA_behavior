@@ -24,10 +24,10 @@ sourceCpp('aux1.cpp')
 ############################
 
 #get data
-dat<- read.csv('Snail Kite Gridded Data_larger_behav.csv', header = T, sep = ',')
+dat<- read.csv('Snail Kite Gridded Data_TOHO_behav.csv', header = T, sep = ',')
 dat$date<- dat$date %>% as_datetime()
-dat.list<- df.to.list(dat)
-obs<- get.summary.stats_behav(dat)
+dat.list<- df.to.list(dat)  #for later behavioral assignment
+obs<- get.summary.stats_behav(dat)  #to run Gibbs sampler on
 
 
 #prepare for Gibbs sampler
@@ -42,20 +42,17 @@ nmaxclust=max(length(ind1),length(ind2))-1  #max possible is 1 fewer than larges
 #### Run Gibbs Sampler on All IDs Simultaneously ####
 #####################################################
 
-res=LDA_behavior_gibbs(dat=obs,gamma1=gamma1,alpha=alpha,
-                       ngibbs=ngibbs,nmaxclust=nmaxclust,
+res=LDA_behavior_gibbs(dat=obs, gamma1=gamma1, alpha=alpha,
+                       ngibbs=ngibbs, nmaxclust=nmaxclust,
                        nburn=nburn)
 
 #Check traceplot of log marginal likelihood
-plot(res$loglikel,type='l')
+plot(res$loglikel, type='l')
 
-#Extract and plots proportions of behaviors per time segment
-theta.post<- res$theta[(nburn+1):ngibbs,]  
+#Extract and plot proportions of behaviors per time segment
+theta.post<- res$theta[(nburn+1):ngibbs,]  #extract samples from posterior
 theta.estim<- theta.post %>% apply(2, mean) %>% matrix(nrow(obs), nmaxclust) #calc mean of posterior
-# png("Boxplot of behavior probs.png", width = 7, height = 5, units = "in", res = 300)
 boxplot(theta.estim, xlab="Behavior", ylab="Probability of Behavior Occurrence")
-# dev.off()
-
 
 #Determine proportion of behaviors (across all time segments)
 #Possibly set threshold below which behaviors are excluded
@@ -78,7 +75,7 @@ ggplot(behav.res, aes(x = bin, y = count, fill = as.factor(behav))) +
   theme(axis.title = element_text(size = 16), axis.text.y = element_text(size = 14),
         axis.text.x.bottom = element_text(size = 12),
         strip.text = element_text(size = 14), strip.text.x = element_text(face = "bold")) +
-  scale_fill_manual(values = viridis(n=3)[c(2,1,3)], guide = F) +
+  scale_fill_manual(values = viridis(n=3)[c(1,3,2)], guide = F) +
   facet_grid(param ~ behav, scales = "free_y")
 
 
@@ -91,7 +88,7 @@ ggplot(behav.res, aes(x = bin, y = prop, fill = as.factor(behav))) +
   theme(axis.title = element_text(size = 16), axis.text.y = element_text(size = 14),
         axis.text.x.bottom = element_text(size = 12),
         strip.text = element_text(size = 14), strip.text.x = element_text(face = "bold")) +
-  scale_fill_manual(values = viridis(n=3)[c(2,1,3)], guide = F) +
+  scale_fill_manual(values = viridis(n=3)[c(1,3,2)], guide = F) +
   facet_grid(param ~ behav, scales = "fixed")
 
 
@@ -102,13 +99,15 @@ ggplot(behav.res, aes(x = bin, y = prop, fill = as.factor(behav))) +
 
 #Assign behaviors (via theta) to each time segment
 theta.estim<- apply(theta.estim[,1:3], 1, function(x) x/sum(x)) %>% t()  #normalize probs for only first 3 behaviors being used
-
 theta.estim<- data.frame(id = obs$id, tseg = obs$tseg, theta.estim)
-names(theta.estim)<- c("id", "tseg", "ARS","Transit","Resting")  #define behaviors
+theta.estim$id<- as.character(theta.estim$id)
+names(theta.estim)<- c("id", "tseg", "Resting","Transit","ARS")  #define behaviors
 nobs<- data.frame(id = obs$id, tseg = obs$tseg, n = apply(obs[,11:16], 1, sum)) #calc obs per tseg using SL bins (more reliable than TA)
 
 #Create augmented matrix by replicating rows (tsegs) according to obs per tseg
 theta.estim2<- aug_behav_df(dat = dat, theta.estim = theta.estim, nobs = nobs)
+ind1<- which(names(theta.estim) != "id")
+theta.estim2<- theta.estim2 %>% mutate_at(names(theta.estim)[ind1], as.numeric)
 
 #Change into long format
 theta.estim.long<- theta.estim2 %>% gather(key, value, -id, -tseg, -time1, -date)
@@ -133,14 +132,19 @@ ggplot(theta.estim.long) +
         panel.grid = element_blank()) +
   facet_wrap(~id, scales = "free_x")
 
+
+
 ### Aligned by date
 
-
 #Window of peak breeding (March 1 - June 30)
-breed<- data.frame(xmin = as_datetime(c("2016-03-01 00:00:00","2017-03-01 00:00:00",
-                                        "2018-03-01 00:00:00","2019-03-01 00:00:00")),
-                   xmax = as_datetime(c("2016-06-30 23:59:59","2017-06-30 23:59:59",
-                                        "2018-06-30 23:59:59","2019-06-30 23:59:59")),
+# breed<- data.frame(xmin = as_datetime(c("2016-03-01 00:00:00","2017-03-01 00:00:00",
+#                                         "2018-03-01 00:00:00","2019-03-01 00:00:00")),
+#                    xmax = as_datetime(c("2016-06-30 23:59:59","2017-06-30 23:59:59",
+#                                         "2018-06-30 23:59:59","2019-06-30 23:59:59")),
+#                    ymin = -Inf, ymax = Inf)
+
+breed<- data.frame(xmin = as_datetime(c("2018-03-01 00:00:00","2019-03-01 00:00:00")),
+                   xmax = as_datetime(c("2018-06-30 23:59:59","2019-06-30 23:59:59")),
                    ymin = -Inf, ymax = Inf)
 
 
@@ -175,13 +179,18 @@ dat2$behav<- factor(dat2$behav, levels = c("Resting","ARS","Transit"))
 
 #load map data
 usa <- ne_states(country = "United States of America", returnclass = "sf")
-fl<- usa %>% filter(name == "Florida")
-fl<- st_transform(fl, crs = "+init=epsg:32617") #change projection to UTM 17N
+fl<- usa %>% filter(name == "Florida") %>% st_transform(fl, crs = "+init=epsg:32617")
 
+# lakes
+lakes10 <- ne_download(scale = 10, type = 'lakes', category = 'physical', returnclass = "sf")
+lakes10<- sf::st_transform(lakes10, crs = "+init=epsg:32617") %>%
+  sf::st_crop(xmin = min(dat$x-20000), xmax = max(dat$x+20000), ymin = min(dat$y-20000),
+              ymax = max(dat$y+20000))
 
 # Facet plot of maps
 ggplot() +
   geom_sf(data = fl) +
+  geom_sf(data = lakes10, fill = "lightblue", alpha = 0.65) +
   coord_sf(xlim = c(min(dat$x-120000), max(dat$x+40000)),
            ylim = c(min(dat$y-20000), max(dat$y+20000)), expand = FALSE) +
   geom_path(data = dat2, aes(x=x, y=y), color="gray60", size=0.25) +

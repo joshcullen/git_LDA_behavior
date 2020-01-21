@@ -14,7 +14,7 @@ get.summary.stats_behav=function(dat){  #dat must have time.seg assigned; for al
   
   #create list of input and to store output
   dat.list<- df.to.list(dat = dat)
-  id<- unique(dat$id)
+  id<- unique(dat$id) %>% as.character()
   n<- length(id)
   obs.list<- vector("list", n)
   names(obs.list)<- id
@@ -26,26 +26,27 @@ get.summary.stats_behav=function(dat){  #dat must have time.seg assigned; for al
     
     
     #TA
-    TA<- matrix(0, ntseg, max(dat.list[[i]]$TA, na.rm = T))
-    colnames(TA)<- paste0("y1.",1:max(dat.list[[i]]$TA, na.rm = T))
+    TA<- matrix(0, ntseg, max(dat$TA, na.rm = T))
+    colnames(TA)<- paste0("y1.",1:max(dat$TA, na.rm = T))
     for (j in 1:ntseg){
-      tmp<- dat.list[[i]] %>% filter(tseg == j) %>% dplyr::select(TA) %>% table()
+      tmp<- dat.ind %>% filter(tseg == j) %>% dplyr::select(TA) %>% table()
       TA[j,as.numeric(names(tmp))]<- tmp
     }
     
     
     #SL
-    SL<- matrix(0, ntseg, max(dat.ind$SL, na.rm = T))
-    colnames(SL)<- paste0("y2.",1:max(dat.ind$SL, na.rm = T))
+    SL<- matrix(0, ntseg, max(dat$SL, na.rm = T))
+    colnames(SL)<- paste0("y2.",1:max(dat$SL, na.rm = T))
     for (j in 1:ntseg){
       tmp<- dat.ind %>% filter(tseg == j) %>% dplyr::select(SL) %>% table()
       SL[j,as.numeric(names(tmp))]<- tmp
     }
     
     
-    id<- rep(unique(dat.ind$id), ntseg)
+    id<- rep(unique(dat.ind$id) %>% as.character(), ntseg)
     tseg<- 1:ntseg
-    behav.res<- cbind(id, tseg, TA, SL) %>% data.frame()
+    behav.res<- cbind(tseg, TA, SL) %>% data.frame() %>% cbind(id, .)
+    behav.res$id<- as.character(behav.res$id)
     obs.list[[i]]<- behav.res
   }
   #obs<- do.call(rbind.data.frame, obs.list)
@@ -119,7 +120,8 @@ aug_behav_df=function(dat, theta.estim, nobs) {  #augment from time segments to 
   }
   
   colnames(theta.estim2)<- names(theta.estim)
-  theta.estim2<- data.frame(theta.estim2, time1 = dat$time1, date = dat$date)
+  theta.estim2<- data.frame(theta.estim2, time1 = dat$time1, date = dat$date,
+                            stringsAsFactors = FALSE)
   
   theta.estim2
 }
@@ -127,14 +129,14 @@ aug_behav_df=function(dat, theta.estim, nobs) {  #augment from time segments to 
 assign_behav=function(dat.list, theta.estim2) {  #assign dominant behavior to observations
   
   for (i in 1:length(dat.list)) {
-    tmp<- matrix(0, nrow(dat.list[[i]]), 2)
+    tmp<- matrix(NA, nrow(dat.list[[i]]), 2)
     sub<- theta.estim2[theta.estim2$id == unique(dat.list[[i]]$id),]
     
     for (j in 1:nrow(sub)) {
       k<- ncol(theta.estim2)-4  # number of behaviors
       ind<- which.max(sub[j,3:(3+k-1)])
-      tmp[j,1]<- names(ind) %>% as.character()
-      tmp[j,2]<- round(sub[j,(2+ind)], 3) %>% as.numeric()
+      tmp[j,1]<- names(ind) %>% as.character()  #needs to be 'j+1' for simulations
+      tmp[j,2]<- round(sub[j,(2+ind)], 3) %>% as.numeric() #needs to be 'j+1' for simulations
     }
     colnames(tmp)<- c("behav","prop")
     dat.list[[i]]<- cbind(dat.list[[i]], tmp)
@@ -143,7 +145,7 @@ assign_behav=function(dat.list, theta.estim2) {  #assign dominant behavior to ob
   }
   
   #Convert to DF
-  dat2<- map_dfr(dat.list, `[`)
+  dat2<- do.call(rbind.data.frame, dat.list)
   dat2$prop<- dat2$prop %>% as.numeric() 
   
   dat2
