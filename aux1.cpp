@@ -30,7 +30,7 @@ int cat1(double value, NumericVector prob) {
 IntegerVector rmultinom1(NumericMatrix prob, NumericVector randu) {
   
   IntegerVector z(prob.nrow());
-
+  
   for(int i=0; i<prob.nrow();i++){
     z[i]=cat1(randu[i],prob(i,_));
   }
@@ -52,16 +52,16 @@ IntegerVector rmultinom2(NumericVector prob, int n, NumericVector randu, int nma
 
 //' This function samples z1 aggregate
 // [[Rcpp::export]]
-List SampleZ1Agg(int nobs,int b1,IntegerMatrix y1, int nmaxclust,
-                 NumericMatrix lphi1, NumericMatrix ltheta,NumericVector zeroes){
+List SampleZAgg(int ntsegm,int b1,IntegerMatrix y1, int nmaxclust,
+                NumericMatrix lphi1, NumericMatrix ltheta,NumericVector zeroes){
   //convert array into arma::cube
   NumericVector vecArray=clone(zeroes);
-  arma::cube Z1Agg(vecArray.begin(),nobs, b1, nmaxclust);
+  arma::cube Z1Agg(vecArray.begin(),ntsegm, b1, nmaxclust);
   
   IntegerVector tmp(nmaxclust);
   NumericVector lprob(nmaxclust);
   NumericVector prob(nmaxclust);
-  for (int i=0; i<nobs; i++){
+  for (int i=0; i<ntsegm; i++){
     for (int j=0; j<b1; j++){
       if (y1(i,j)>0){
         //calculate probability
@@ -71,7 +71,7 @@ List SampleZ1Agg(int nobs,int b1,IntegerMatrix y1, int nmaxclust,
         lprob=lprob-max(lprob);
         prob=exp(lprob);
         prob=prob/sum(prob);
-
+        
         //sample from multinomial and store results
         tmp=rmultinom2(prob,y1(i,j),runif(y1(i,j)),nmaxclust);
         for (int k=0; k<nmaxclust; k++){
@@ -85,46 +85,11 @@ List SampleZ1Agg(int nobs,int b1,IntegerMatrix y1, int nmaxclust,
   return(L);
 }
 
-//' This function samples z2 aggregate
-// [[Rcpp::export]]
-List SampleZ2Agg(int nobs,int b2,IntegerMatrix y2, int nmaxclust,
-                 NumericMatrix lphi2, NumericMatrix ltheta,NumericVector zeroes){
-  //convert array into arma::cube
-  NumericVector vecArray=clone(zeroes);
-  arma::cube Z2Agg(vecArray.begin(),nobs, b2, nmaxclust);
-  
-  IntegerVector tmp(nmaxclust);
-  NumericVector lprob(nmaxclust);
-  NumericVector prob(nmaxclust);
-  for (int i=0; i<nobs; i++){
-    for (int j=0; j<b2; j++){
-      if (y2(i,j)>0){
-        //calculate probability
-        for (int k=0; k<nmaxclust; k++){
-          lprob[k]=lphi2(k,j)+ltheta(i,k);
-        }
-        lprob=lprob-max(lprob);
-        prob=exp(lprob);
-        prob=prob/sum(prob);
-        
-        //sample from multinomial and store results
-        tmp=rmultinom2(prob,y2(i,j),runif(y2(i,j)),nmaxclust);
-        for (int k=0; k<nmaxclust; k++){
-          Z2Agg(i,j,k)=tmp[k];
-        }
-      }
-    }
-  }
-  List L = List::create(Named("Z2Agg") =Z2Agg);
-  
-  return(L);
-}
-
 //' This function calculates the inverted cumsum
 // [[Rcpp::export]]
-IntegerMatrix CumSumInv(int nobs, int nmaxclust, IntegerMatrix z){
-  IntegerMatrix res(nobs,z.ncol());
-  IntegerVector soma(nobs);
+IntegerMatrix CumSumInv(int ntsegm, int nmaxclust, IntegerMatrix z){
+  IntegerMatrix res(ntsegm,z.ncol());
+  IntegerVector soma(ntsegm);
   
   for (int j=z.ncol()-1; j> -1; j--){
     if (j==z.ncol()-1){

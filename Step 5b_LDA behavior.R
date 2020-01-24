@@ -1,4 +1,4 @@
-set.seed(2)
+set.seed(1)
 
 library('MCMCpack')
 library('Rcpp')
@@ -27,16 +27,17 @@ sourceCpp('aux1.cpp')
 dat<- read.csv('Snail Kite Gridded Data_TOHO_behav.csv', header = T, sep = ',')
 dat$date<- dat$date %>% as_datetime()
 dat.list<- df.to.list(dat)  #for later behavioral assignment
-obs<- get.summary.stats_behav(dat)  #to run Gibbs sampler on
+
+nbins<- c(6,8)  #number of bins per param (in order)
+dat_red<- dat %>% dplyr::select(c(id, tseg, SL, TA))  #only keep necessary cols
+obs<- get.summary.stats_behav(dat = dat_red, nbins = nbins)  #to run Gibbs sampler on
 
 
 #prepare for Gibbs sampler
 ngibbs=1000
 nburn=ngibbs/2
-ind1=grep('y1',colnames(obs))
-ind2=grep('y2',colnames(obs))
-nmaxclust=max(length(ind1),length(ind2))-1  #max possible is 1 fewer than largest number of bins
-
+nmaxclust=max(nbins) - 1  #one fewer than max number of bins used for params
+ndata.types=length(nbins)
 
 #####################################################
 #### Run Gibbs Sampler on All IDs Simultaneously ####
@@ -44,7 +45,7 @@ nmaxclust=max(length(ind1),length(ind2))-1  #max possible is 1 fewer than larges
 
 res=LDA_behavior_gibbs(dat=obs, gamma1=gamma1, alpha=alpha,
                        ngibbs=ngibbs, nmaxclust=nmaxclust,
-                       nburn=nburn)
+                       nburn=nburn, ndata.types=ndata.types)
 
 #Check traceplot of log marginal likelihood
 plot(res$loglikel, type='l')
@@ -52,7 +53,7 @@ plot(res$loglikel, type='l')
 #Extract and plot proportions of behaviors per time segment
 theta.post<- res$theta[(nburn+1):ngibbs,]  #extract samples from posterior
 theta.estim<- theta.post %>% apply(2, mean) %>% matrix(nrow(obs), nmaxclust) #calc mean of posterior
-boxplot(theta.estim, xlab="Behavior", ylab="Probability of Behavior Occurrence")
+boxplot(theta.estim, xlab="Behavior", ylab="Proportion of Total Behavior")
 
 #Determine proportion of behaviors (across all time segments)
 #Possibly set threshold below which behaviors are excluded
@@ -64,7 +65,7 @@ round(apply(theta.estim, 2, sum)/nrow(theta.estim), digits = 3)
 #### Visualize Histograms of Movement Parameters by Behavior ####
 #################################################################
 
-behav.res<- get_behav_hist(res)
+behav.res<- get_behav_hist(res = res, dat_red = dat_red)
 behav.res<- behav.res[behav.res$behav <=3,]  #only select the top 3 behaviors
 
 #Plot histograms of frequency data; order color scale from slow to fast
@@ -75,7 +76,7 @@ ggplot(behav.res, aes(x = bin, y = count, fill = as.factor(behav))) +
   theme(axis.title = element_text(size = 16), axis.text.y = element_text(size = 14),
         axis.text.x.bottom = element_text(size = 12),
         strip.text = element_text(size = 14), strip.text.x = element_text(face = "bold")) +
-  scale_fill_manual(values = viridis(n=3)[c(1,3,2)], guide = F) +
+  scale_fill_manual(values = viridis(n=3)[c(2,3,1)], guide = F) +
   facet_grid(param ~ behav, scales = "free_y")
 
 
@@ -88,7 +89,7 @@ ggplot(behav.res, aes(x = bin, y = prop, fill = as.factor(behav))) +
   theme(axis.title = element_text(size = 16), axis.text.y = element_text(size = 14),
         axis.text.x.bottom = element_text(size = 12),
         strip.text = element_text(size = 14), strip.text.x = element_text(face = "bold")) +
-  scale_fill_manual(values = viridis(n=3)[c(1,3,2)], guide = F) +
+  scale_fill_manual(values = viridis(n=3)[c(2,3,1)], guide = F) +
   facet_grid(param ~ behav, scales = "fixed")
 
 
@@ -101,8 +102,8 @@ ggplot(behav.res, aes(x = bin, y = prop, fill = as.factor(behav))) +
 theta.estim<- apply(theta.estim[,1:3], 1, function(x) x/sum(x)) %>% t()  #normalize probs for only first 3 behaviors being used
 theta.estim<- data.frame(id = obs$id, tseg = obs$tseg, theta.estim)
 theta.estim$id<- as.character(theta.estim$id)
-names(theta.estim)<- c("id", "tseg", "Resting","Transit","ARS")  #define behaviors
-nobs<- data.frame(id = obs$id, tseg = obs$tseg, n = apply(obs[,11:16], 1, sum)) #calc obs per tseg using SL bins (more reliable than TA)
+names(theta.estim)<- c("id", "tseg", "ARS", "Transit", "Resting")  #define behaviors
+nobs<- data.frame(id = obs$id, tseg = obs$tseg, n = apply(obs[,3:8], 1, sum)) #calc obs per tseg using SL bins (more reliable than TA)
 
 #Create augmented matrix by replicating rows (tsegs) according to obs per tseg
 theta.estim2<- aug_behav_df(dat = dat, theta.estim = theta.estim, nobs = nobs)
@@ -124,7 +125,7 @@ ggplot(theta.estim.long) +
   geom_area(aes(x=time1, y=prop, fill = behavior), color = "black", size = 0.25,
             position = "fill") +
   labs(x = "\nObservation", y = "Proportion of Behavior\n") +
-  scale_fill_viridis_d("Behavior", direction = -1) +
+  scale_fill_viridis_d("Behavior") +
   theme_bw() +
   theme(axis.title = element_text(size = 16), axis.text.y = element_text(size = 14),
         axis.text.x.bottom = element_text(size = 12),
@@ -156,7 +157,7 @@ ggplot(theta.estim.long) +
   geom_rect(data = breed, aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
             fill = "grey", alpha = 0.25) +
   labs(x = "\nTime", y = "Proportion of Behavior\n") +
-  scale_fill_viridis_d("Behavior", direction = -1) +
+  scale_fill_viridis_d("Behavior") +
   theme_bw() +
   theme(axis.title = element_text(size = 16), axis.text.y = element_text(size = 14),
         axis.text.x.bottom = element_text(size = 12),
@@ -195,7 +196,7 @@ ggplot() +
            ylim = c(min(dat$y-20000), max(dat$y+20000)), expand = FALSE) +
   geom_path(data = dat2, aes(x=x, y=y), color="gray60", size=0.25) +
   geom_point(data = dat2, aes(x, y, fill=behav), size=2.5, pch=21, alpha=dat2$prop) +
-  scale_fill_viridis_d("Behavior", direction = -1) +
+  scale_fill_viridis_d("Behavior") +
   labs(x = "Longitude", y = "Latitude") +
   theme_bw() +
   theme(axis.title = element_text(size = 16),
@@ -204,3 +205,4 @@ ggplot() +
   guides(fill = guide_legend(label.theme = element_text(size = 12),
                              title.theme = element_text(size = 14))) +
   facet_wrap(~id)
+

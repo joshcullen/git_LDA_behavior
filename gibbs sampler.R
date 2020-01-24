@@ -1,46 +1,51 @@
-LDA_behavior_gibbs=function(dat,gamma1,alpha,ngibbs,nmaxclust,nburn){
-  nobs=nrow(dat)
+LDA_behavior_gibbs=function(dat,gamma1,alpha,ngibbs,nmaxclust,nburn,ndata.types){
+  ntsegm=nrow(dat)
   
   #prior
   gamma1=0.1
   alpha=0.1
   
   #separate variables
-  ind=grep('y1',colnames(dat))
-  y1=data.matrix(dat[,ind])
-  b1=length(ind)
-  ind=grep('y2',colnames(dat))
-  y2=data.matrix(dat[,ind])
-  b2=length(ind)
+  y=list()
+  ncat.dat=rep(NA,ndata.types)
+  for (i in 1:ndata.types){
+    nome=paste0('y',i)
+    ind=grep(nome,colnames(dat))
+    y[[i]]=data.matrix(dat[,ind])
+    ncat.dat[i]=length(ind)
+  }
 
   #initial values
-  phi1=matrix(1/b1,nmaxclust,b1)
-  phi2=matrix(1/b2,nmaxclust,b2)
-  theta=matrix(1/nmaxclust,nobs,nmaxclust)
-  z1.agg=array(NA,dim=c(nobs,b1,nmaxclust))
-  z2.agg=array(NA,dim=c(nobs,b2,nmaxclust))
-  for (i in 1:nobs){
-    for (j in 1:b1){
-      z1.agg[i,j,]=rmultinom(1,size=y1[i,j],prob=rep(1/nmaxclust,nmaxclust))
-    }
-    for (j in 1:b2){
-      z2.agg[i,j,]=rmultinom(1,size=y2[i,j],prob=rep(1/nmaxclust,nmaxclust))
-    }
+  phi=z.agg=list()
+  for (i in 1:ndata.types){
+    phi[[i]]=matrix(1/ncat.dat[i],nmaxclust,ncat.dat[i])
+    z.agg[[i]]=array(NA,dim=c(ntsegm,ncat.dat[i],nmaxclust))
+  }
+  theta=matrix(1/nmaxclust,ntsegm,nmaxclust)
+  
+  for (j in 1:ndata.types){
+    for (i in 1:ntsegm){
+      for (k in 1:ncat.dat[j]){
+        z.agg[[j]][i,k,]=rmultinom(1,size=y[[j]][i,k],prob=rep(1/nmaxclust,nmaxclust))
+      }
+    }  
   }
 
   #prepare for gibbs
-  store.phi1=matrix(NA,ngibbs,nmaxclust*b1)
-  store.phi2=matrix(NA,ngibbs,nmaxclust*b2)
-  store.theta=matrix(NA,ngibbs,nobs*nmaxclust)
+  store.phi=zeroes=list()
+  for (i in 1:ndata.types){
+    store.phi[[i]]=matrix(NA,ngibbs,nmaxclust*ncat.dat[i])
+    zeroes[[i]]=array(0,c(ntsegm,ncat.dat[i],nmaxclust))
+  }
+  store.theta=matrix(NA,ngibbs,ntsegm*nmaxclust)
   store.loglikel=rep(NA,1)
-  zeroes1=array(0,c(nobs,b1,nmaxclust))
-  zeroes2=array(0,c(nobs,b2,nmaxclust))
   
   #progress bar
   pb <- progress_bar$new(
     format = " iteration (:current/:total) [:bar] :percent [Elapsed: :elapsed, Remaining: :eta]",
     total = ngibbs, clear = FALSE, width = 100)
   
+  #run gibbs sampler
   for (i in 1:ngibbs){
     pb$tick()  #create progress bar
     
@@ -49,53 +54,39 @@ LDA_behavior_gibbs=function(dat,gamma1,alpha,ngibbs,nmaxclust,nburn){
       med=apply(theta,2,mean)
       ordem=order(med,decreasing=T)
       theta=theta[,ordem]
-      z1.agg=z1.agg[,,ordem]
-      z2.agg=z2.agg[,,ordem]
-      phi1=phi1[ordem,]
-      phi2=phi2[ordem,]
+      
+      for (j in 1:ndata.types){
+        z.agg[[j]]=z.agg[[j]][,,ordem]
+        phi[[j]]=phi[[j]][ordem,]
+      }
     }
     
-    #sample from FCD's
-    tmp=SampleZ1Agg(nobs=nobs,b1=b1,y1=y1, nmaxclust=nmaxclust,
-                    lphi1=log(phi1),ltheta=log(theta),zeroes=zeroes1)
-    z1.agg=tmp$Z1Agg
-    # z1.agg=sample.z1.agg(lphi1=log(phi1),ltheta=log(theta),y1=y1,
-    #                      nobs=nobs,b1=b1,nbehav=nmaxclust)
+    #sample from FCD's 
+    z.agg=sample.z(ntsegm=ntsegm,ncat.dat=ncat.dat,y=y, nmaxclust=nmaxclust,
+                   phi=phi,ltheta=log(theta),zeroes=zeroes,ndata.types=ndata.types)
     
-    tmp=SampleZ2Agg(nobs=nobs,b2=b2,y2=y2, nmaxclust=nmaxclust,
-                    lphi2=log(phi2),ltheta=log(theta),zeroes=zeroes2)
-    z2.agg=tmp$Z2Agg
-    # z2.agg=sample.z2.agg(lphi2=log(phi2),ltheta=log(theta),y2=y2,
-    #                      nobs=nobs,b2=b2,nbehav=nmaxclust)
-    # z1.agg=z1.agg.true
-    # z2.agg=z2.agg.true
-    
-    v=sample.v(z1.agg=z1.agg,z2.agg=z2.agg,gamma1=gamma1,
-               nobs=nobs,nbehav=nmaxclust)
-    theta=get.theta(v=v,nbehav=nmaxclust,nobs=nobs)
+    v=sample.v(z.agg=z.agg,gamma1=gamma1,
+               ntsegm=ntsegm,ndata.types=ndata.types,nmaxclust=nmaxclust)
+    theta=get.theta(v=v,nmaxclust=nmaxclust,ntsegm=ntsegm)
     # theta=theta.true
     
-    phi1=sample.phi1(z1.agg=z1.agg,alpha=alpha,nbehav=nmaxclust,b1=b1)
-    # phi1=phi1.true
-    phi2=sample.phi2(z2.agg=z2.agg,alpha=alpha,nbehav=nmaxclust,b2=b2)
-    # phi2=phi2.true
+    phi=sample.phi(z.agg=z.agg,alpha=alpha,nmaxclust=nmaxclust,
+                   ncat.dat=ncat.dat,ndata.types=ndata.types)
     
     #calculate log-likelihood
-    prob1=theta%*%phi1
-    p1=sum(y1*log(prob1))
-    prob2=theta%*%phi2
-    p2=sum(y2*log(prob2))
+    p1=0
+    for (j in 1:ndata.types){
+      prob1=theta%*%phi[[j]]  
+      p1=p1+sum(y[[j]]*log(prob1))
+    }
     
     #store results
-    store.phi1[i,]=phi1
-    store.phi2[i,]=phi2
+    for (j in 1:ndata.types){
+      store.phi[[j]][i,]=phi[[j]]
+    }
     store.theta[i,]=theta
-    store.loglikel[i]=p1+p2
+    store.loglikel[i]=p1
   }
   
-  list(phi1=store.phi1,phi2=store.phi2,theta=store.theta,
-       loglikel=store.loglikel,z1.agg=z1.agg,z2.agg=z2.agg)  
+  list(phi=store.phi,theta=store.theta,loglikel=store.loglikel,z.agg=z.agg)  
 }
-
-
-

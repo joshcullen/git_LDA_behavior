@@ -10,7 +10,7 @@ df.to.list=function(dat) {  #only for id as col in dat
   dat.list
 }
 #------------------------------------------------
-get.summary.stats_behav=function(dat){  #dat must have time.seg assigned; for all IDs
+get.summary.stats_behav=function(dat,nbins){  #dat must have time.seg assigned; for all IDs
   
   #create list of input and to store output
   dat.list<- df.to.list(dat = dat)
@@ -25,27 +25,20 @@ get.summary.stats_behav=function(dat){  #dat must have time.seg assigned; for al
     ntseg=max(dat.ind$tseg)
     
     
-    #TA
-    TA<- matrix(0, ntseg, max(dat$TA, na.rm = T))
-    colnames(TA)<- paste0("y1.",1:max(dat$TA, na.rm = T))
-    for (j in 1:ntseg){
-      tmp<- dat.ind %>% filter(tseg == j) %>% dplyr::select(TA) %>% table()
-      TA[j,as.numeric(names(tmp))]<- tmp
+    #generate counts of obs per param bin by tseg for all params; 'id' and 'tseg' need to be 1st two cols
+    mat.list=list()
+    for (j in 1:length(nbins)) {
+      mat.list[[j]]<- matrix(0, ntseg, nbins[j])
+      colnames(mat.list[[j]])<- paste0("y",j,".",1:nbins[j])
+      for (k in 1:ntseg){
+        tmp<- dat.ind %>% filter(tseg == k) %>% dplyr::select(j+2) %>% table()
+        mat.list[[j]][k,as.numeric(names(tmp))]<- tmp
+      }
     }
-    
-    
-    #SL
-    SL<- matrix(0, ntseg, max(dat$SL, na.rm = T))
-    colnames(SL)<- paste0("y2.",1:max(dat$SL, na.rm = T))
-    for (j in 1:ntseg){
-      tmp<- dat.ind %>% filter(tseg == j) %>% dplyr::select(SL) %>% table()
-      SL[j,as.numeric(names(tmp))]<- tmp
-    }
-    
     
     id<- rep(unique(dat.ind$id) %>% as.character(), ntseg)
     tseg<- 1:ntseg
-    behav.res<- cbind(tseg, TA, SL) %>% data.frame() %>% cbind(id, .)
+    behav.res<- do.call(cbind.data.frame, mat.list) %>% data.frame() %>% cbind(id, tseg, .)
     behav.res$id<- as.character(behav.res$id)
     obs.list[[i]]<- behav.res
   }
@@ -54,42 +47,31 @@ get.summary.stats_behav=function(dat){  #dat must have time.seg assigned; for al
   obs[is.na(obs)]<- 0  #replace NAs w/ zero
   obs
 }
+
 #------------------------------------------------
-get_behav_hist=function(res) {  #generate DF of bin counts for histogram per behavior
+get_behav_hist=function(res,dat_red) {  #generate DF of bin counts for histogram per behavior
   
-  #summarize TA results by frequency and proportion
-  behav.res.TA<- matrix(0, dim(res$z1.agg)[2]*dim(res$z1.agg)[3], 4)
-  oo = 1
-  for (i in 1:dim(res$z1.agg)[3]) {
-    tmp<-  apply(res$z1.agg[,,i], 2, sum) %>% data.frame(count = ., prop = ./sum(.)) %>%
-      mutate(bin = 1:dim(res$z1.agg)[2]) %>% mutate(behav = i) %>% as.matrix()
+  #summarize cluster results by frequency and proportion
+  behav.list<- list()
+  for (j in 1:length(res$z.agg)) {
+    behav.list[[j]]<- matrix(0, dim(res$z.agg[[j]])[2]*dim(res$z.agg[[j]])[3], 4)
     
-    behav.res.TA[oo:(oo+dim(res$z1.agg)[2] - 1),]<- tmp
-    oo = oo+dim(res$z1.agg)[2]
-  }
-  
-  behav.res.TA<- data.frame(behav.res.TA)
-  names(behav.res.TA)<- c("count","prop","bin","behav")
-  behav.res.TA$param<- "TA"
-  
-  
-  #summarize SL results by frequency and proportion
-  behav.res.SL<- matrix(0, dim(res$z2.agg)[2]*dim(res$z2.agg)[3], 4)
-  oo = 1
-  for (i in 1:dim(res$z2.agg)[3]) {
-    tmp<-  apply(res$z2.agg[,,i], 2, sum) %>% data.frame(count = ., prop = ./sum(.)) %>%
-      mutate(bin = 1:dim(res$z2.agg)[2]) %>% mutate(behav = i) %>% as.matrix()
+    oo = 1
+    for (i in 1:dim(res$z.agg[[j]])[3]) {
+      tmp<- apply(res$z.agg[[j]][,,i], 2, sum) %>% data.frame(count = ., prop = ./sum(.)) %>%
+        mutate(bin = 1:dim(res$z.agg[[j]])[2]) %>% mutate(behav = i) %>% as.matrix()
+      
+      behav.list[[j]][oo:(oo+dim(res$z.agg[[j]])[2] - 1),]<- tmp
+      oo = oo+dim(res$z.agg[[j]])[2]
+    }
     
-    behav.res.SL[oo:(oo+dim(res$z2.agg)[2] - 1),]<- tmp
-    oo = oo+dim(res$z2.agg)[2]
+    behav.list[[j]]<- data.frame(behav.list[[j]])
+    names(behav.list[[j]])<- c("count","prop","bin","behav")
+    behav.list[[j]]$param<- names(dat_red[j+2])
   }
-  
-  behav.res.SL<- data.frame(behav.res.SL)
-  names(behav.res.SL)<- c("count","prop","bin","behav")
-  behav.res.SL$param<- "SL"
   
   #combine params
-  behav.res<- rbind(behav.res.TA, behav.res.SL)
+  behav.res<- map_dfr(behav.list, `[`)
   
   behav.res
 }

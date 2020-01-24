@@ -15,9 +15,8 @@ alpha=0.1
 #prepare for gibbs
 ngibbs=1000
 nburn=ngibbs/2
-ind1=grep('y1',colnames(dat))
-ind2=grep('y2',colnames(dat))
-nmaxclust=10#max(length(ind1),length(ind2))-1
+nmaxclust=10
+ndata.types=5
 res=LDA_behavior_gibbs(dat=dat,gamma1=gamma1,alpha=alpha,
                        ngibbs=ngibbs,nmaxclust=nmaxclust,
-                       nburn=nburn)
+                       nburn=nburn,ndata.types=ndata.types)
