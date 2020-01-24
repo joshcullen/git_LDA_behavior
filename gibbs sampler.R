@@ -7,25 +7,25 @@ LDA_behavior_gibbs=function(dat,gamma1,alpha,ngibbs,nmaxclust,nburn,ndata.types)
   
   #separate variables
   y=list()
-  ncat.dat=rep(NA,ndata.types)
+  nbins=rep(NA,ndata.types)
   for (i in 1:ndata.types){
     nome=paste0('y',i)
     ind=grep(nome,colnames(dat))
     y[[i]]=data.matrix(dat[,ind])
-    ncat.dat[i]=length(ind)
+    nbins[i]=length(ind)
   }
 
   #initial values
   phi=z.agg=list()
   for (i in 1:ndata.types){
-    phi[[i]]=matrix(1/ncat.dat[i],nmaxclust,ncat.dat[i])
-    z.agg[[i]]=array(NA,dim=c(ntsegm,ncat.dat[i],nmaxclust))
+    phi[[i]]=matrix(1/nbins[i],nmaxclust,nbins[i])
+    z.agg[[i]]=array(NA,dim=c(ntsegm,nbins[i],nmaxclust))
   }
   theta=matrix(1/nmaxclust,ntsegm,nmaxclust)
   
   for (j in 1:ndata.types){
     for (i in 1:ntsegm){
-      for (k in 1:ncat.dat[j]){
+      for (k in 1:nbins[j]){
         z.agg[[j]][i,k,]=rmultinom(1,size=y[[j]][i,k],prob=rep(1/nmaxclust,nmaxclust))
       }
     }  
@@ -34,8 +34,8 @@ LDA_behavior_gibbs=function(dat,gamma1,alpha,ngibbs,nmaxclust,nburn,ndata.types)
   #prepare for gibbs
   store.phi=zeroes=list()
   for (i in 1:ndata.types){
-    store.phi[[i]]=matrix(NA,ngibbs,nmaxclust*ncat.dat[i])
-    zeroes[[i]]=array(0,c(ntsegm,ncat.dat[i],nmaxclust))
+    store.phi[[i]]=matrix(NA,ngibbs,nmaxclust*nbins[i])
+    zeroes[[i]]=array(0,c(ntsegm,nbins[i],nmaxclust))
   }
   store.theta=matrix(NA,ngibbs,ntsegm*nmaxclust)
   store.loglikel=rep(NA,1)
@@ -62,7 +62,7 @@ LDA_behavior_gibbs=function(dat,gamma1,alpha,ngibbs,nmaxclust,nburn,ndata.types)
     }
     
     #sample from FCD's 
-    z.agg=sample.z(ntsegm=ntsegm,ncat.dat=ncat.dat,y=y, nmaxclust=nmaxclust,
+    z.agg=sample.z(ntsegm=ntsegm,nbins=nbins,y=y, nmaxclust=nmaxclust,
                    phi=phi,ltheta=log(theta),zeroes=zeroes,ndata.types=ndata.types)
     
     v=sample.v(z.agg=z.agg,gamma1=gamma1,
@@ -71,7 +71,7 @@ LDA_behavior_gibbs=function(dat,gamma1,alpha,ngibbs,nmaxclust,nburn,ndata.types)
     # theta=theta.true
     
     phi=sample.phi(z.agg=z.agg,alpha=alpha,nmaxclust=nmaxclust,
-                   ncat.dat=ncat.dat,ndata.types=ndata.types)
+                   nbins=nbins,ndata.types=ndata.types)
     
     #calculate log-likelihood
     p1=0

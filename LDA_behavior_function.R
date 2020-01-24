@@ -1,7 +1,7 @@
-sample.z=function(ntsegm,ncat.dat,y,nmaxclust,phi,ltheta,zeroes,ndata.types){
+sample.z=function(ntsegm,nbins,y,nmaxclust,phi,ltheta,zeroes,ndata.types){
   z.agg=list()
   for (i in 1:ndata.types){
-    tmp=SampleZAgg(ntsegm=ntsegm,b1=ncat.dat[i],y1=y[[i]],nmaxclust=nmaxclust,
+    tmp=SampleZAgg(ntsegm=ntsegm,b1=nbins[i],y1=y[[i]],nmaxclust=nmaxclust,
                    lphi1=log(phi[[i]]), ltheta=ltheta,zeroes=zeroes[[i]])  
     z.agg[[i]]=tmp$Z1Agg
   }
@@ -36,11 +36,11 @@ get.theta=function(v,nmaxclust,ntsegm){
   theta
 }
 #-----------------------------------
-sample.phi=function(z.agg,alpha,nmaxclust,ncat.dat,ndata.types){
+sample.phi=function(z.agg,alpha,nmaxclust,nbins,ndata.types){
   phi=list()
   for (j in 1:ndata.types){
     soma=t(apply(z.agg[[j]],2:3,sum))  
-    tmp=matrix(NA,nmaxclust,ncat.dat[j])
+    tmp=matrix(NA,nmaxclust,nbins[j])
     for (i in 1:nmaxclust){
       tmp[i,]=rdirichlet(1,soma[i,]+alpha)
     }
